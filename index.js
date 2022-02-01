@@ -10,11 +10,18 @@ import { exec } from "child_process";
 const program = new Command();
 
 program
-  .command('create [template]')
+  .command('create <template>')
   .description('Create a public template')
   .option('-vsc, --vsc', 'Open vs code')
   .action((template, options) => {
-
+    inquirer
+  .prompt([
+    {
+      name: 'name',
+      type: 'input',
+      message: 'Your project name:',
+    },
+  ]).then(answers => {
     const spinner = ora('Template existence check').start();
     fetch('https://redajs.thebigbotil.repl.co/api/&temp='+template, {
         method: 'GET',
@@ -25,7 +32,7 @@ program
       } else {
         spinner.succeed("Template exist!");
         const install = ora('Install Template').start();
-        exec('git clone ' + result.git, (err, stdout, stderr) => {
+        exec('git clone ' + result.git + ' ' + answers.name, (err, stdout, stderr) => {
             if (err) {
                 console.log(chalk.red('Error Occurred!'));
               return;
@@ -51,7 +58,8 @@ program
         console.log(result.send)
       }
     })
-  })
+  }).catch(err => {console.log(chalk.red('Error Occurred!'))})
+})
 
 program
   .command('info [template]')
@@ -77,6 +85,63 @@ program
     })
   })
 
+  program
+  .command('new')
+  .description('Create new public template')
+  .action((template) => {
+    inquirer
+  .prompt([
+    {
+      name: 'name',
+      type: 'input',
+      message: 'Template Name:',
+    },
+    {
+      name: 'description',
+      type: 'input',
+      message: 'Template Description:',
+    },
+    {
+      name: 'git',
+      type: 'input',
+      message: 'Template Github Link:',
+    },
+    {
+      name: 'send',
+      type: 'input',
+      message: 'Message to send after installation:',
+    },
+    {
+      name: 'exec',
+      type: 'input',
+      message: 'Command to execute after installation:',
+    },
+  ])
+  .then((answers) => {
+    const rst = ora('Checking answers').start();
+    fetch('https://redajs.thebigbotil.repl.co/api/new', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: answers.name,
+        desc: answers.description,
+        git: answers.git,
+        send: answers.send,
+        exec: answers.exec
+      })
+  }).then(response => response.json())
+  .then(result => {
+    const spinner = ora('Adding Template').start();
+    if (result.status == "err") {
+      spinner.fail("The template already exists")
+    } else {
+      spinner.succeed("The template has been created")
+    }
+  })
+  })
+})
 
 program
   .description('Redajs the template manager!')
